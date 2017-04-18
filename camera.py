@@ -61,7 +61,7 @@ if __name__ == '__main__':
     img = cv2.imread(test_img)
     undistorted = camera.undistort(img)
 
-    f, (ax1, ax2) = plot.subplots(1, 2, squeeze=True)
+    f, (ax1, ax2) = plot.subplots(1, 2, squeeze=True, figsize=(8, 3))
     ax1.imshow(img)
     ax1.set_title('Original image')
     ax2.imshow(undistorted)
