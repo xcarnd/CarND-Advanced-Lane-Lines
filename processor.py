@@ -50,32 +50,40 @@ class Processor(object):
         mask[(img_data >= lower_bound) & (img_data < upper_bound)] = 1
         return mask
 
-    def extract(self, image, sobel_kernel_size=3):
+    def extract(self, image):
         """Extract lane line from the specifying img
         """
         # convert to grayscale
-        gs = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # histogram equalization
-        gs = cv2.equalizeHist(gs)
+        hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
+        # s plane
+        image_plane = hls[:, :, 2]
+        # sobel kernel size
+        sobel_kernel_size = 5
 
         # apply sobelx operator and sobely operator
-        sobelx = self.apply_sobelx(gs, sobel_kernel_size)
-        sobely = self.apply_sobely(gs, sobel_kernel_size)
+        sobelx = self.apply_sobelx(image_plane, sobel_kernel_size)
+        sobely = self.apply_sobely(image_plane, sobel_kernel_size)
         # compute magnitude of gradient, absolute direction of gradient
         mag = self.get_grad_mag(sobelx, sobely)
-        direct = self._grad_abs_dir(sobelx, sobely)
+        direct = self.get_grad_abs_dir(sobelx, sobely)
 
-        return gs
+        sobelx_thresh = self.threshold(sobelx, 12, 245)
+        sobely_thresh = self.threshold(sobely, 21, 228)
+        mag_thresh = self.threshold(mag, 15, 190)
+        dir_thresh = self.threshold(direct, 27 * np.pi / 180, 64 * np.pi / 180, False)
 
+        mask = np.zeros_like(image_plane, dtype=np.uint8)
+        mask[((sobelx_thresh == 1) & (sobely_thresh == 1)) | ((mag_thresh == 1) & (dir_thresh == 1))] = 1
+        return mask
 
 if __name__ == '__main__':
     pipeline = Processor()
-    test_img = './test_images/straight_lines1.jpg'
+    test_img = './test_images/test6.jpg'
     img = cv2.imread(test_img)
-    img2 = pipeline.extract(img)
-    img3 = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img32 = cv2.equalizeHist(img3)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    binary = pipeline.extract(img)
+
     f, (ax1, ax2) = plot.subplots(nrows=1, ncols=2)
-    ax1.imshow(img32, cmap='gray')
-    ax2.imshow(img2, cmap='gray')
+    ax1.imshow(img)
+    ax2.imshow(np.stack((binary, binary, binary), axis=2) * 255)
     plot.show()

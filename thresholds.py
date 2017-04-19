@@ -105,8 +105,7 @@ class Previewer(QtCore.QObject):
 if __name__ == '__main__':
     test_img = './test_images/test5.jpg'
     img = cv2.imread(test_img)
-    gs = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gs_equ = cv2.equalizeHist(gs)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
 
     f, ((ax21, ax22), (ax31, ax32), (ax41, ax42)) = plt.subplots(nrows=3, ncols=2)
@@ -118,20 +117,21 @@ if __name__ == '__main__':
     ax41.imshow(hls[:, :, 2], cmap='gray')
     ax42.imshow(cv2.equalizeHist(hls[:, :, 2]), cmap='gray')
 
-    plt.show()
+    # plt.show()
+
+    img_plane = hls[:, :, 2]
 
     processor = Processor()
     kernel_size = 5
 
-
     def p11_renderer(low, high):
-        sobelx = processor.apply_sobelx(gs, kernel_size)
+        sobelx = processor.apply_sobelx(img_plane, kernel_size)
         thresholded = processor.threshold(sobelx, low, high)
         return thresholded
 
 
     def p12_renderer(low, high):
-        sobely = processor.apply_sobely(gs, kernel_size)
+        sobely = processor.apply_sobely(img_plane, kernel_size)
         thresholded = processor.threshold(sobely, low, high)
         return thresholded
 
@@ -144,17 +144,19 @@ if __name__ == '__main__':
 
 
     def p21_renderer(low, high):
-        sobelx = processor.apply_sobelx(gs, kernel_size)
-        sobely = processor.apply_sobely(gs, kernel_size)
+        sobelx = processor.apply_sobelx(img_plane, kernel_size)
+        sobely = processor.apply_sobely(img_plane, kernel_size)
         grad_mag = processor.get_grad_mag(sobelx, sobely)
         return processor.threshold(grad_mag, low, high)
 
 
     def p22_renderer(low, high):
-        sobelx = processor.apply_sobelx(gs, kernel_size)
-        sobely = processor.apply_sobely(gs, kernel_size)
+        sobelx = processor.apply_sobelx(img_plane, kernel_size)
+        sobely = processor.apply_sobely(img_plane, kernel_size)
         grad_abs_dir = processor.get_grad_abs_dir(sobelx, sobely)
-        return processor.threshold(grad_abs_dir, low / 1000, high / 1000, normalizing=False)
+        low = low / 10 * np.pi / 180
+        high = high / 10 * np.pi / 180
+        return processor.threshold(grad_abs_dir, low, high, normalizing=False)
 
 
     def p23_renderer(low, high):
@@ -163,12 +165,13 @@ if __name__ == '__main__':
             result[(p21.current_rendered_data == 1) & (p22.current_rendered_data == 1)] = 1
             return result
 
-
     def p31_renderer(low, high):
         if p13.current_rendered_data is not None and p23.current_rendered_data is not None:
             return np.stack((p13.current_rendered_data * 255, p23.current_rendered_data * 255,
                              np.zeros_like(p13.current_rendered_data)), axis=2)
 
+    def p33_renderer(low, high):
+        return img_rgb
 
     app = QApplication(sys.argv)
 
@@ -185,12 +188,13 @@ if __name__ == '__main__':
 
     p21 = Previewer(w, renderer=p21_renderer, size=panel_size, location=(0, panel_size[1]))
     p22 = Previewer(w, renderer=p22_renderer, size=panel_size, location=(panel_size[0], panel_size[1]),
-                    bounds=(0, int(np.pi / 2 * 1000)))
+                    bounds=(0, 900))
     p23 = Previewer(w, renderer=p23_renderer, size=panel_size, location=(panel_size[0] * 2, panel_size[1]))
     p21.rendered.connect(lambda: p23.render())
     p22.rendered.connect(lambda: p23.render())
 
     p31 = Previewer(w, renderer=p31_renderer, size=panel_size, location=(0, panel_size[1] * 2))
+    p33 = Previewer(w, renderer=p33_renderer, size=panel_size, location=(panel_size[0] * 2, panel_size[1] * 2))
     p13.rendered.connect(lambda: p31.render())
     p23.rendered.connect(lambda: p31.render())
 
