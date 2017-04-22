@@ -8,6 +8,11 @@ import cv2
 
 class Processor(object):
 
+    def __init__(self):
+        self.sobelx_thresh = (40, 170)
+        self.v_thresh = (200, 256)
+        self.s_thresh = (100, 256)
+
     @staticmethod
     def apply_sobelx(gs, kernel_size):
         """Apply Sobel x operator to the provided grayscale image.
@@ -55,50 +60,33 @@ class Processor(object):
         """Extract lane line from the specifying img
         """
         # convert to hls
-        hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
-        # l plane
-        l_plane = hls[:, :, 1]
-        # s plane
+        blurred = cv2.GaussianBlur(image, (5, 5), 0)
+        hsv = cv2.cvtColor(blurred, cv2.COLOR_RGB2HSV)
+        hls = cv2.cvtColor(blurred, cv2.COLOR_RGB2HLS)
+
+        # v plane
+        v_plane = hsv[:, :, 2]
         s_plane = hls[:, :, 2]
         # sobel kernel size
         sobel_kernel_size = 3
-        
-        # masking applied to l plane
-        # apply sobelx operator and sobely operator
-        # l_sobelx = self.apply_sobelx(l_plane, sobel_kernel_size)
-        # l_sobely = self.apply_sobely(l_plane, sobel_kernel_size)
-        # # compute magnitude of gradient, absolute direction of gradient
-        # l_mag = self.get_grad_mag(l_sobelx, l_sobely)
-        # l_direct = self.get_grad_abs_dir(l_sobelx, l_sobely)
-        #
-        # l_sobelx_thresh = self.threshold(l_sobelx, 12, 235)
-        # l_sobely_thresh = self.threshold(l_sobely, 21, 228)
-        # l_mag_thresh = self.threshold(l_mag, 15, 255)
-        # l_dir_thresh = self.threshold(l_direct, 27 * np.pi / 180, 64 * np.pi / 180, False)
-        l_thresh = self.threshold(l_plane, 80, 255)
 
         # masking applied to s plane
         # apply sobelx operator and sobely operator
-        s_sobelx = self.apply_sobelx(s_plane, sobel_kernel_size)
-        s_sobely = self.apply_sobely(s_plane, sobel_kernel_size)
-        # compute magnitude of gradient, absolute direction of gradient
-        s_mag = self.get_grad_mag(s_sobelx, s_sobely)
-        s_direct = self.get_grad_abs_dir(s_sobelx, s_sobely)
+        v_sobelx = np.abs(self.apply_sobelx(v_plane, sobel_kernel_size))
+        v_sobely = np.abs(self.apply_sobely(v_plane, sobel_kernel_size))
+        v_sobelx_thresh = self.threshold(v_sobelx, self.sobelx_thresh[0], self.sobelx_thresh[1])
+        v_thresh = self.threshold(v_plane, self.v_thresh[0], self.v_thresh[1], normalizing=False)
+        s_thresh = self.threshold(s_plane, self.s_thresh[0], self.s_thresh[1], normalizing=False)
 
-        s_sobelx_thresh = self.threshold(s_sobelx, 12, 245)
-        s_sobely_thresh = self.threshold(s_sobely, 20, 228)
-        s_mag_thresh = self.threshold(s_mag, 39, 255)
-        s_dir_thresh = self.threshold(s_direct, 40 * np.pi / 180, 83 * np.pi / 180, False)
-
-        mask = np.zeros_like(s_plane, dtype=np.uint8)
-        mask[(l_thresh == 1) & (((s_sobelx_thresh == 1) & (s_sobely_thresh == 1)) | ((s_mag_thresh == 1) & (s_dir_thresh == 1)))] = 1
+        mask = np.zeros_like(v_plane, dtype=np.uint8)
+        mask[(v_sobelx_thresh == 1) | ((s_thresh == 1) & (v_thresh == 1))] = 1
 
         return mask
 
     def draw_polygon(self, image, poly_points, color):
         cv2.polylines(image, np.int32([poly_points]), 1, color, 3)
 
-    def apply_slide_window_search(self, image):
+    def apply_slide_window_search(self, image, debug_image=None):
         """Find left lane and right lane by applying slide window search al
         """
         centers = []
@@ -123,6 +111,16 @@ class Processor(object):
         # TODO: what if failing to find left_center and right_center?
         centers.append((left_center, right_center))
 
+        if debug_image is not None:
+            cv2.rectangle(debug_image,
+                          (int(left_center - window_width / 2), image.shape[0]),
+                          (int(left_center + window_width / 2), image.shape[0] - slice_height),
+                          (0, 255, 0), 3)
+            cv2.rectangle(debug_image,
+                          (int(right_center - window_width / 2), image.shape[0]),
+                          (int(right_center + window_width / 2), image.shape[0] - slice_height),
+                          (0, 255, 0), 3)
+
         for i in range(1, num_slices):
             # calculating the y coordinates for the slice
             slice_y_max = image.shape[0] - slice_height * i
@@ -132,20 +130,38 @@ class Processor(object):
             # searching left center and right center based on the centers for the previous slice
             # searching is limited within [left_center - search_margin : left_center + search_margin]
             # in case no signal in the searching window, use center from previous slice
-            l_search_min = max((left_center - search_margin, 0))
-            l_search_max = min((left_center + search_margin, image.shape[1]))
+            offset = window_width / 2
+
+            l_search_min = int(max((left_center - search_margin + offset, 0)))
+            l_search_max = int(min((left_center + search_margin + offset, image.shape[1])))
             if len(conv_signal[l_search_min:l_search_max].nonzero()[0]) > 0:
-                l_center = np.argmax(conv_signal[l_search_min:l_search_max]) + l_search_min - int(window_width / 2)
-                if abs((l_center - left_center) / left_center) < 0.2:
-                    left_center = l_center
+                argmax = np.argmax(conv_signal[l_search_min:l_search_max])
+                inverse_argmax = int((l_search_max - l_search_min) -
+                                     np.argmax(conv_signal[l_search_max:l_search_min:-1]))
+                l_center = int((argmax + inverse_argmax) / 2 + l_search_min - offset)
+                left_center = l_center
+            if debug_image is not None:
+                cv2.circle(debug_image, (left_center, int((slice_y_min + slice_y_max) / 2)), 1, (255, 0, 0), 2)
+                cv2.rectangle(debug_image,
+                              (int(left_center - window_width / 2), slice_y_min),
+                              (int(left_center + window_width / 2), slice_y_max),
+                              (0, 255, 0), 3)
 
             # same for the right side
-            r_search_min = max((right_center - search_margin, 0))
-            r_search_max = min((right_center + search_margin, image.shape[1]))
+            r_search_min = int(max((right_center - search_margin + offset, 0)))
+            r_search_max = int(min((right_center + search_margin + offset, image.shape[1])))
             if len(conv_signal[r_search_min:r_search_max].nonzero()[0]) > 0:
-                r_center = np.argmax(conv_signal[r_search_min:r_search_max]) + r_search_min - int(window_width / 2)
-                if abs((r_center - right_center) / right_center) < 0.2:
-                    right_center = r_center
+                argmax = np.argmax(conv_signal[r_search_min:r_search_max])
+                inverse_argmax = int((r_search_max - r_search_min) -
+                                     np.argmax(conv_signal[r_search_max:r_search_min:-1]))
+                r_center = int((argmax + inverse_argmax) / 2 + r_search_min - offset)
+                right_center = r_center
+            if debug_image is not None:
+                cv2.circle(debug_image, (right_center, int((slice_y_min + slice_y_max) / 2)), 1, (255, 0, 0), 2)
+                cv2.rectangle(debug_image,
+                              (int(right_center - window_width / 2), slice_y_min),
+                              (int(right_center + window_width / 2), slice_y_max),
+                              (0, 255, 0), 3)
 
             centers.append((left_center, right_center))
         return np.array(centers)
@@ -172,7 +188,7 @@ class Processor(object):
         window_points = np.concatenate(window_points)
         fitting = np.polyfit(window_points[:, 0], window_points[:, 1], 2)
         return fitting, window_points
-    
+
     def get_birdview_lane_mask_image(self, image, lane_left_fit, lane_right_fit, color=(0, 255, 0)):
         l_y = np.linspace(0, image.shape[0] - 1, image.shape[0])
         l_x = lane_left_fit[0] * l_y ** 2 + lane_left_fit[1] * l_y + lane_left_fit[2]
@@ -197,7 +213,7 @@ class Processor(object):
 
         d1 = 2 * a * y * mpp[0] + b
         d2 = 2 * a
-        curvature = (1 + d1 ** 2) ** (3/2) / abs(2 * a)
+        curvature = (1 + d1 ** 2) ** (3/2) / abs(d2)
         return curvature
 
 
@@ -217,18 +233,20 @@ if __name__ == '__main__':
                          (266, 670),
                          (1038, 670),
                          (682, 446)), dtype=np.float32)
-    dst_rect = np.array(((280, 0),
-                         (280, 720),
-                         (1000, 720),
-                         (1000, 0)), dtype=np.float32)
+    dst_rect = np.array(((300, 0),
+                         (300, 720),
+                         (980, 720),
+                         (980, 0)), dtype=np.float32)
 
     camera.setup_perspective_transform(src_rect, dst_rect)
 
     #processor.draw_polygon(extracted, src_rect, 1)
-
+    plot.imshow(extracted)
+    plot.show()
     birdview = camera.warp_perspective(extracted)
-
-    plot.imshow(extracted, cmap='gray')
+    bvrgb = np.stack((birdview, birdview, birdview), axis=2) * 255
+    overlapped = cv2.addWeighted(bvrgb, 0.5, camera.warp_perspective(img), 0.5, 0)
+    plot.imshow(overlapped)
     plot.show()
 
     lane_centers = processor.apply_slide_window_search(birdview)

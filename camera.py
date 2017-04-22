@@ -95,12 +95,12 @@ if __name__ == '__main__':
                   (266, 670),
                   (1038, 670),
                   (682, 446)), dtype=np.float32),
-        np.array(((180, 90),
-                  (180, 690),
-                  (980, 690),
-                  (980, 90)), dtype=np.float32))
+        np.array(((280, 0),
+                  (280, 720),
+                  (1000, 720),
+                  (1000, 0)), dtype=np.float32))
 
-    next_img = "./test_images/test5.jpg"
+    next_img = "./test_images/test1.jpg"
     img = cv2.imread(next_img)
     undistorted2 = camera.undistort(img)
     birdview = camera.warp_perspective(undistorted2)

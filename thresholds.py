@@ -10,7 +10,21 @@ import cv2
 import numpy as np
 
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
+from camera import Camera
+
+camera = Camera()
+src_rect = np.array(((597, 446),
+                     (266, 670),
+                     (1038, 670),
+                     (682, 446)), dtype=np.float32)
+dst_rect = np.array(((400, 200),
+                     (400, 720),
+                     (880, 720),
+                     (880, 200)), dtype=np.float32)
+
+camera.setup_perspective_transform(src_rect, dst_rect)
 
 class Previewer(QtCore.QObject):
     PADDING = 16
@@ -107,72 +121,83 @@ if __name__ == '__main__':
     test_img = "./undistorted.jpg"
     img = cv2.imread(test_img)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+    img_gau = cv2.GaussianBlur(img_rgb, (3, 3), 0)
+    gray = cv2.cvtColor(img_gau, cv2.COLOR_RGB2GRAY)
+    hls = cv2.cvtColor(img_gau, cv2.COLOR_RGB2HLS)
+    hsv = cv2.cvtColor(img_gau, cv2.COLOR_BGR2HSV)
 
-    f, ((ax21, ax22), (ax31, ax32), (ax41, ax42)) = plt.subplots(nrows=3, ncols=2)
-
+    f, ((ax11, ax12, ax13), (ax21, ax22, ax23), (ax31, ax32, ax33)) = plt.subplots(nrows=3, ncols=3)
+    ax11.imshow(gray, cmap='gray')
     ax21.imshow(hls[:, :, 0], cmap='gray')
-    ax22.imshow(cv2.equalizeHist(hls[:, :, 0]), cmap='gray')
-    ax31.imshow(hls[:, :, 1], cmap='gray')
-    ax32.imshow(cv2.equalizeHist(hls[:, :, 1]), cmap='gray')
-    ax41.imshow(hls[:, :, 2], cmap='gray')
-    ax42.imshow(cv2.equalizeHist(hls[:, :, 2]), cmap='gray')
-
-    # plt.show()
-
-    img_plane = hls[:, :, 2]
+    ax22.imshow(hls[:, :, 1], cmap='gray')
+    ax23.imshow(hls[:, :, 2], cmap='gray')
+    ax31.imshow(hsv[:, :, 0], cmap='gray')
+    ax32.imshow(hsv[:, :, 1], cmap='gray')
+    ax33.imshow(hsv[:, :, 2], cmap='gray')
+    #plt.show()
+    
+    img1 = mpimg.imread('./test_images/test1.jpg')
+    img2 = mpimg.imread('./test_images/test2.jpg')
+    img3 = mpimg.imread('./test_images/test3.jpg')
+    img4 = mpimg.imread('./test_images/test4.jpg')
+    img5 = mpimg.imread('./test_images/test5.jpg')
+    img6 = mpimg.imread('./test_images/test6.jpg')
 
     processor = Processor()
     kernel_size = 3
 
     def p11_renderer(low, high):
-        # sobelx = np.abs(processor.apply_sobelx(img_plane, kernel_size))
+        # sobelx = processor.apply_sobelx(gray, kernel_size)
         # thresholded = processor.threshold(sobelx, low, high)
-        return processor.threshold(hls[:, :, 2], low, high)
+        # return thresholded
+        processor.sobelx_thresh = (low, high)
 
 
     def p12_renderer(low, high):
-        # sobely = np.abs(processor.apply_sobelx(img_plane, kernel_size))
-        # thresholded = processor.threshold(sobely, low, high)
-        return processor.threshold(hls[:, :, 1], low, high)
-
+        # return processor.threshold(hls[:, :, 2], low, high)
+        processor.v_thresh = (low, high)
 
     def p13_renderer(low, high):
-        if p11.current_rendered_data is not None and p12.current_rendered_data is not None:
-            result = np.zeros_like(p11.current_rendered_data, dtype=np.uint8)
-            result[(p11.current_rendered_data == 1) & (p12.current_rendered_data == 1)] = 1
-            return result
+        # if p11.current_rendered_data is not None and p12.current_rendered_data is not None:
+        #     result = np.zeros_like(p11.current_rendered_data, dtype=np.uint8)
+        #     result[(p11.current_rendered_data > 0) | (p12.current_rendered_data > 0)] = 1
+        #     birdview = camera.warp_perspective(result)
+        #     return birdview
+        return processor.threshold(gray, low, high, normalizing=False)
 
 
     def p21_renderer(low, high):
-        sobelx = processor.apply_sobelx(img_plane, kernel_size)
-        sobely = processor.apply_sobely(img_plane, kernel_size)
-        grad_mag = processor.get_grad_mag(sobelx, sobely)
-        return processor.threshold(grad_mag, low, high)
+        # return processor.threshold(hsv[:, :, 2], low, high)
+        return processor.threshold(hsv[:,:,2], low, high, normalizing=False)
 
 
     def p22_renderer(low, high):
-        sobelx = processor.apply_sobelx(img_plane, kernel_size)
-        sobely = processor.apply_sobely(img_plane, kernel_size)
-        grad_abs_dir = processor.get_grad_abs_dir(sobelx, sobely)
-        low = low / 10 * np.pi / 180
-        high = high / 10 * np.pi / 180
-        return processor.threshold(grad_abs_dir, low, high, normalizing=False)
+        # return processor.threshold(processor.apply_sobelx(hsv[:, :, 2], kernel_size), low, high)
+        return processor.threshold(hls[:,:,2], low, high, normalizing=False)
 
 
     def p23_renderer(low, high):
         if p21.current_rendered_data is not None and p22.current_rendered_data is not None:
             result = np.zeros_like(p21.current_rendered_data, dtype=np.uint8)
-            result[(p11.current_rendered_data == 1) & (p21.current_rendered_data == 1) & (p22.current_rendered_data == 1)] = 1
-            return result
+            result[(p21.current_rendered_data > 0) & (p22.current_rendered_data > 0)] = 1
+            birdview = camera.warp_perspective(result)
+            bv = np.stack((birdview, birdview, birdview), axis=2) * 255
+            lane_centers = processor.apply_slide_window_search(birdview, debug_image=bv)
+            # lf, lp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[0])
+            # rf, rp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[1])
+            # mask = processor.get_birdview_lane_mask_image(birdview, lf, rf)
+            # bv = np.stack((birdview, birdview, birdview), axis=2) * 255
+            # bv[lp[:, 0], lp[:, 1]] = (255, 0, 0)
+            # bv[rp[:, 0], rp[:, 1]] = (255, 255, 0)
+            # return cv2.addWeighted(bv, 0.5,  mask.astype(np.uint8), 0.5, 0)
+            return bv
+        #return processor.extract(img3)
 
     def p31_renderer(low, high):
-        if p13.current_rendered_data is not None and p23.current_rendered_data is not None:
-            return np.stack((p13.current_rendered_data * 255, p23.current_rendered_data * 255,
-                             np.zeros_like(p13.current_rendered_data)), axis=2)
+        return processor.extract(img4)
 
     def p33_renderer(low, high):
-        return img_rgb
+        return processor.extract(img5)
 
     app = QApplication(sys.argv)
 
@@ -184,20 +209,24 @@ if __name__ == '__main__':
     p11 = Previewer(w, renderer=p11_renderer, size=panel_size, location=(0, 0))
     p12 = Previewer(w, renderer=p12_renderer, size=panel_size, location=(panel_size[0], 0))
     p13 = Previewer(w, renderer=p13_renderer, size=panel_size, location=(panel_size[0] * 2, 0))
-    p11.rendered.connect(lambda: p13.render())
-    p12.rendered.connect(lambda: p13.render())
 
     p21 = Previewer(w, renderer=p21_renderer, size=panel_size, location=(0, panel_size[1]))
-    p22 = Previewer(w, renderer=p22_renderer, size=panel_size, location=(panel_size[0], panel_size[1]),
-                    bounds=(0, 900))
+    p22 = Previewer(w, renderer=p22_renderer, size=panel_size, location=(panel_size[0], panel_size[1]))
+                    #bounds=(0, 900))
     p23 = Previewer(w, renderer=p23_renderer, size=panel_size, location=(panel_size[0] * 2, panel_size[1]))
-    p21.rendered.connect(lambda: p23.render())
-    p22.rendered.connect(lambda: p23.render())
 
     p31 = Previewer(w, renderer=p31_renderer, size=panel_size, location=(0, panel_size[1] * 2))
     p33 = Previewer(w, renderer=p33_renderer, size=panel_size, location=(panel_size[0] * 2, panel_size[1] * 2))
-    p13.rendered.connect(lambda: p31.render())
-    p23.rendered.connect(lambda: p31.render())
+
+    # p11.rendered.connect(lambda: p13.render())
+    # p12.rendered.connect(lambda: p13.render())
+    p21.rendered.connect(lambda: p23.render())
+    p22.rendered.connect(lambda: p23.render())
+    # p13.rendered.connect(lambda: p31.render())
+    # p23.rendered.connect(lambda: p31.render())
+
+    # p11.rendered.connect(lambda: p13.render() or p21.render() or p22.render() or p23.render() or p31.render() or p33.render())
+    # p12.rendered.connect(lambda: p13.render() or p21.render() or p22.render() or p23.render() or p31.render() or p33.render())
 
     w.show()
 
