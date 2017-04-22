@@ -31,11 +31,12 @@ pipeline = LaneDetectionPipeline(camera)
 import cv2
 import matplotlib.pyplot as plt
 
-output_path = "./test2.jpg"
-input_img = './test_images/test1.jpg'
-img = cv2.imread(input_img)
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-output = pipeline.process(img)
-cv2.imwrite(output_path, cv2.cvtColor(output, cv2.COLOR_RGB2BGR))
-plt.imshow(output)
-plt.show()
+for file_name in os.listdir("./test_images"):
+    input_path = "./test_images/" + file_name
+    output_path = "./output_images/" + file_name
+    img = cv2.imread(input_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    output = pipeline.process(img)
+    cv2.imwrite(output_path, cv2.cvtColor(output, cv2.COLOR_RGB2BGR))
+    #plt.imshow(output)
+    #plt.show()

@@ -15,11 +15,9 @@ class LaneDetectionPipeline(object):
         birdview = self.camera.warp_perspective(extracted)
 
         lane_centers = self.processor.apply_slide_window_search(birdview)
-        plt.imshow(birdview)
-        plt.show()
 
-        l_polyfit,_ = self.processor.fit_polynomial_for_lane(birdview, lane_centers.T[0])
-        r_polyfit,_ = self.processor.fit_polynomial_for_lane(birdview, lane_centers.T[1])
+        l_polyfit, _ = self.processor.fit_polynomial_for_lane(birdview, lane_centers.T[0])
+        r_polyfit, _ = self.processor.fit_polynomial_for_lane(birdview, lane_centers.T[1])
 
         mask_img = self.processor.get_birdview_lane_mask_image(birdview, l_polyfit, r_polyfit)
 

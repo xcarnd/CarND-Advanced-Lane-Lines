@@ -45,6 +45,8 @@ class Camera(object):
         _, cmx, dist, _, _ = cv2.calibrateCamera(objp, imgp, img_size, None, None)
         self.cameraMatrix = cmx
         self.distortionCoeff = dist
+        self.persp_trans_src_rect = None
+        self.persp_trans_dst_rect = None
 
     def undistort(self, image):
         """Undistort offered image.
@@ -56,6 +58,8 @@ class Camera(object):
     def setup_perspective_transform(self, src_rect, dst_rect):
         """Setup perspective transform by the specified source rect and destination rect.
         """
+        self.persp_trans_src_rect = src_rect
+        self.persp_trans_dst_rect = dst_rect
         self.persp_trans_matrix = cv2.getPerspectiveTransform(src_rect, dst_rect)
         self.inv_persp_trans_matrix = cv2.getPerspectiveTransform(dst_rect, src_rect)
 
@@ -96,9 +100,10 @@ if __name__ == '__main__':
                   (980, 690),
                   (980, 90)), dtype=np.float32))
 
-    next_img = "./test_images/straight_lines1.jpg"
+    next_img = "./test_images/test5.jpg"
     img = cv2.imread(next_img)
     undistorted2 = camera.undistort(img)
     birdview = camera.warp_perspective(undistorted2)
     plot.imshow(birdview)
+    plot.show()
     cv2.imwrite("./undistorted.jpg", undistorted2)

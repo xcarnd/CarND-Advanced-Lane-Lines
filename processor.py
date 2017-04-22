@@ -65,16 +65,17 @@ class Processor(object):
         
         # masking applied to l plane
         # apply sobelx operator and sobely operator
-        l_sobelx = self.apply_sobelx(l_plane, sobel_kernel_size)
-        l_sobely = self.apply_sobely(l_plane, sobel_kernel_size)
-        # compute magnitude of gradient, absolute direction of gradient
-        l_mag = self.get_grad_mag(l_sobelx, l_sobely)
-        l_direct = self.get_grad_abs_dir(l_sobelx, l_sobely)
-
-        l_sobelx_thresh = self.threshold(l_sobelx, 12, 235)
-        l_sobely_thresh = self.threshold(l_sobely, 21, 228)
-        l_mag_thresh = self.threshold(l_mag, 15, 255)
-        l_dir_thresh = self.threshold(l_direct, 27 * np.pi / 180, 64 * np.pi / 180, False)
+        # l_sobelx = self.apply_sobelx(l_plane, sobel_kernel_size)
+        # l_sobely = self.apply_sobely(l_plane, sobel_kernel_size)
+        # # compute magnitude of gradient, absolute direction of gradient
+        # l_mag = self.get_grad_mag(l_sobelx, l_sobely)
+        # l_direct = self.get_grad_abs_dir(l_sobelx, l_sobely)
+        #
+        # l_sobelx_thresh = self.threshold(l_sobelx, 12, 235)
+        # l_sobely_thresh = self.threshold(l_sobely, 21, 228)
+        # l_mag_thresh = self.threshold(l_mag, 15, 255)
+        # l_dir_thresh = self.threshold(l_direct, 27 * np.pi / 180, 64 * np.pi / 180, False)
+        l_thresh = self.threshold(l_plane, 80, 255)
 
         # masking applied to s plane
         # apply sobelx operator and sobely operator
@@ -90,10 +91,12 @@ class Processor(object):
         s_dir_thresh = self.threshold(s_direct, 40 * np.pi / 180, 83 * np.pi / 180, False)
 
         mask = np.zeros_like(s_plane, dtype=np.uint8)
-        mask[((l_sobelx_thresh == 1) & (l_sobely_thresh == 1)) | ((l_mag_thresh == 1) & (l_dir_thresh == 1))] = 1
-        mask[((s_sobelx_thresh == 1) & (s_sobely_thresh == 1)) | ((s_mag_thresh == 1) & (s_dir_thresh == 1))] = 1
+        mask[(l_thresh == 1) & (((s_sobelx_thresh == 1) & (s_sobely_thresh == 1)) | ((s_mag_thresh == 1) & (s_dir_thresh == 1)))] = 1
 
         return mask
+
+    def draw_polygon(self, image, poly_points, color):
+        cv2.polylines(image, np.int32([poly_points]), 1, color, 3)
 
     def apply_slide_window_search(self, image):
         """Find left lane and right lane by applying slide window search al
@@ -111,7 +114,7 @@ class Processor(object):
         search_margin = 100
 
         # determine the starting point for searching. summing the quarter bottom of image to get slice
-        start_points_search_region_height = int(image.shape[0] * 0.1)
+        start_points_search_region_height = int(image.shape[0] * 0.25)
         mid_point = int(image.shape[1] / 2)
         left_sum = np.sum(image[image.shape[0] - start_points_search_region_height:, :mid_point], axis=0)
         left_center = np.argmax(np.convolve(window_template, left_sum)) - int(window_width / 2)
@@ -135,6 +138,7 @@ class Processor(object):
                 l_center = np.argmax(conv_signal[l_search_min:l_search_max]) + l_search_min - int(window_width / 2)
                 if abs((l_center - left_center) / left_center) < 0.2:
                     left_center = l_center
+
             # same for the right side
             r_search_min = max((right_center - search_margin, 0))
             r_search_max = min((right_center + search_margin, image.shape[1]))
@@ -209,26 +213,31 @@ if __name__ == '__main__':
     extracted = binary
 
     camera = Camera()
-    camera.setup_perspective_transform(
-        np.array(((597, 446),
-                  (266, 670),
-                  (1038, 670),
-                  (682, 446)), dtype=np.float32),
-        np.array(((440, 80),
-                  (440, 690),
-                  (840, 690),
-                  (840, 90)), dtype=np.float32))
+    src_rect = np.array(((597, 446),
+                         (266, 670),
+                         (1038, 670),
+                         (682, 446)), dtype=np.float32)
+    dst_rect = np.array(((280, 0),
+                         (280, 720),
+                         (1000, 720),
+                         (1000, 0)), dtype=np.float32)
 
-    plot.imshow(extracted)
-    plot.show()
+    camera.setup_perspective_transform(src_rect, dst_rect)
+
+    #processor.draw_polygon(extracted, src_rect, 1)
 
     birdview = camera.warp_perspective(extracted)
+
+    plot.imshow(extracted, cmap='gray')
+    plot.show()
 
     lane_centers = processor.apply_slide_window_search(birdview)
 
     l_polyfit,lp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[0])
     r_polyfit,rp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[1])
     mask_img = processor.get_birdview_lane_mask_image(birdview, l_polyfit, r_polyfit)
+    mask_img[lp[:, 0], lp[:, 1]] = [255, 0, 0]
+    mask_img[rp[:, 0], rp[:, 1]] = [0, 0, 255]
 
     plot.imshow(mask_img)
     plot.show()
@@ -236,5 +245,5 @@ if __name__ == '__main__':
 
     result = cv2.addWeighted(img, 1, unwarp_mask, 0.3, 0)
 
-    print(processor.compute_curvature((30/720, 3.7/700), lp))
-    print(processor.compute_curvature((30/720, 3.7/700), rp))
+    print(processor.compute_curvature((30/720, 3.7/600), lp))
+    print(processor.compute_curvature((30/720, 3.7/600), rp))

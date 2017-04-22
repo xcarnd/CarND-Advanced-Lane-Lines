@@ -18,7 +18,7 @@ class Previewer(QtCore.QObject):
     rendered = QtCore.pyqtSignal()
 
     def __init__(self, qwidget, renderer: Callable[[int, int], QtGui.QImage] = None, location=(0, 0), size=(400, 300),
-                 bounds=(0, 255)):
+                 bounds=(0, 256)):
         super(Previewer, self).__init__()
 
         self.current_rendered_data = None
@@ -103,7 +103,8 @@ class Previewer(QtCore.QObject):
 
 
 if __name__ == '__main__':
-    test_img = './test_images/test5.jpg'
+    #test_img = './test_images/test5.jpg'
+    test_img = "./undistorted.jpg"
     img = cv2.imread(test_img)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
@@ -122,18 +123,18 @@ if __name__ == '__main__':
     img_plane = hls[:, :, 2]
 
     processor = Processor()
-    kernel_size = 5
+    kernel_size = 3
 
     def p11_renderer(low, high):
-        sobelx = processor.apply_sobelx(img_plane, kernel_size)
-        thresholded = processor.threshold(sobelx, low, high)
-        return thresholded
+        # sobelx = np.abs(processor.apply_sobelx(img_plane, kernel_size))
+        # thresholded = processor.threshold(sobelx, low, high)
+        return processor.threshold(hls[:, :, 2], low, high)
 
 
     def p12_renderer(low, high):
-        sobely = processor.apply_sobely(img_plane, kernel_size)
-        thresholded = processor.threshold(sobely, low, high)
-        return thresholded
+        # sobely = np.abs(processor.apply_sobelx(img_plane, kernel_size))
+        # thresholded = processor.threshold(sobely, low, high)
+        return processor.threshold(hls[:, :, 1], low, high)
 
 
     def p13_renderer(low, high):
@@ -162,7 +163,7 @@ if __name__ == '__main__':
     def p23_renderer(low, high):
         if p21.current_rendered_data is not None and p22.current_rendered_data is not None:
             result = np.zeros_like(p21.current_rendered_data, dtype=np.uint8)
-            result[(p21.current_rendered_data == 1) & (p22.current_rendered_data == 1)] = 1
+            result[(p11.current_rendered_data == 1) & (p21.current_rendered_data == 1) & (p22.current_rendered_data == 1)] = 1
             return result
 
     def p31_renderer(low, high):
