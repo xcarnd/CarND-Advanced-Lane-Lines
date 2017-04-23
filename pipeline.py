@@ -1,5 +1,5 @@
 import cv2
-import processor
+import processing
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -14,20 +14,20 @@ class LaneDetectionPipeline(object):
     def process(self, img):
         """Processing the input image, returns the processed image."""
         undistorted_img = self.camera.undistort(img)
-        extracted = processor.extract(undistorted_img)
+        extracted = processing.extract(undistorted_img)
         birdview = self.camera.warp_perspective(extracted)
 
         if len(self.last_fit) > 0:
             last_fit_left, last_fit_right = self.last_fit[-1]
             # do lane search based on previously fit lanes
-            lane_centers = processor.find_lane_center_by_prior_fit(birdview, last_fit_left, last_fit_right)
+            lane_centers = processing.find_lane_center_by_prior_fit(birdview, last_fit_left, last_fit_right)
         else:
-            lane_centers = processor.find_lane_centers_by_sliding_window_search(birdview)
+            lane_centers = processing.find_lane_centers_by_sliding_window_search(birdview)
 
-        l_polyfit, lp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[0])
-        r_polyfit, rp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[1])
+        l_polyfit, lp = processing.fit_polynomial_for_lane(birdview, lane_centers.T[0])
+        r_polyfit, rp = processing.fit_polynomial_for_lane(birdview, lane_centers.T[1])
 
-        mask_img = processor.get_birdview_lane_mask_image(birdview, l_polyfit, r_polyfit)
+        mask_img = processing.get_birdview_lane_mask_image(birdview, l_polyfit, r_polyfit)
 
         # birdviewRgb = np.stack((birdview, birdview, birdview), axis=2)
         # birdviewRgb[lp[:, 0], lp[:, 1]] = [255, 0, 0]
@@ -39,8 +39,8 @@ class LaneDetectionPipeline(object):
 
         unwarp_mask = self.camera.warp_inverse_perspective(mask_img)
         result = cv2.addWeighted(img, 1, unwarp_mask, 0.3, 0)
-        l_curvature = processor.compute_curvature((self.y_mpp, self.x_mpp), lp, img.shape[0])
-        r_curvature = processor.compute_curvature((self.y_mpp, self.x_mpp), rp, img.shape[0])
+        l_curvature = processing.compute_curvature((self.y_mpp, self.x_mpp), lp, img.shape[0])
+        r_curvature = processing.compute_curvature((self.y_mpp, self.x_mpp), rp, img.shape[0])
         center_x = img.shape[1] / 2
         actual_x = np.sum(lane_centers[0]) / 2
         offset_x = actual_x - center_x

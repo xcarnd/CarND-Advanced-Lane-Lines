@@ -5,7 +5,7 @@ import PyQt5.QtGui as QtGui
 import PyQt5.QtCore as QtCore
 from typing import Callable
 
-import processor
+import processing
 import cv2
 import numpy as np
 
@@ -150,12 +150,12 @@ if __name__ == '__main__':
         # sobelx = processor.apply_sobelx(gray, kernel_size)
         # thresholded = processor.threshold(sobelx, low, high)
         # return thresholded
-        processor.sobelx_thresh = (low, high)
+        processing.sobelx_thresh = (low, high)
 
 
     def p12_renderer(low, high):
         # return processor.threshold(hls[:, :, 2], low, high)
-        processor.v_thresh = (low, high)
+        processing.v_thresh = (low, high)
 
     def p13_renderer(low, high):
         # if p11.current_rendered_data is not None and p12.current_rendered_data is not None:
@@ -163,17 +163,17 @@ if __name__ == '__main__':
         #     result[(p11.current_rendered_data > 0) | (p12.current_rendered_data > 0)] = 1
         #     birdview = camera.warp_perspective(result)
         #     return birdview
-        return processor.threshold(gray, low, high, normalizing=False)
+        return processing.threshold(gray, low, high, normalizing=False)
 
 
     def p21_renderer(low, high):
         # return processor.threshold(hsv[:, :, 2], low, high)
-        return processor.threshold(hsv[:,:,2], low, high, normalizing=False)
+        return processing.threshold(hsv[:, :, 2], low, high, normalizing=False)
 
 
     def p22_renderer(low, high):
         # return processor.threshold(processor.apply_sobelx(hsv[:, :, 2], kernel_size), low, high)
-        return processor.threshold(hls[:,:,2], low, high, normalizing=False)
+        return processing.threshold(hls[:, :, 2], low, high, normalizing=False)
 
 
     def p23_renderer(low, high):
@@ -182,7 +182,7 @@ if __name__ == '__main__':
             result[(p21.current_rendered_data > 0) & (p22.current_rendered_data > 0)] = 1
             birdview = camera.warp_perspective(result)
             bv = np.stack((birdview, birdview, birdview), axis=2) * 255
-            lane_centers = processor.find_lane_centers_by_sliding_window_search(birdview, debug_image=bv)
+            lane_centers = processing.find_lane_centers_by_sliding_window_search(birdview, debug_image=bv)
             # lf, lp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[0])
             # rf, rp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[1])
             # mask = processor.get_birdview_lane_mask_image(birdview, lf, rf)
@@ -194,10 +194,10 @@ if __name__ == '__main__':
         #return processor.extract(img3)
 
     def p31_renderer(low, high):
-        return processor.extract(img4)
+        return processing.extract(img4)
 
     def p33_renderer(low, high):
-        return processor.extract(img5)
+        return processing.extract(img5)
 
     app = QApplication(sys.argv)
 
