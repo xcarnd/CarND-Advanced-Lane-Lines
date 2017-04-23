@@ -5,7 +5,7 @@ import PyQt5.QtGui as QtGui
 import PyQt5.QtCore as QtCore
 from typing import Callable
 
-from processor import Processor
+import processor
 import cv2
 import numpy as np
 

@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 import matplotlib.pyplot as plot
-import matplotlib.image as mpimg
 import cv2
 import numpy as np
 import os
