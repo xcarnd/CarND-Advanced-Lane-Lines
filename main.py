@@ -11,10 +11,10 @@ camera = Camera()
 camera.calibrate(9, 6, [cal_images_dir + "/" + p for p in os.listdir(cal_images_dir)])
 
 # setup perspective transform
-src_rect = np.array(((597, 446),
-                     (266, 670),
-                     (1038, 670),
-                     (682, 446)), dtype=np.float32)
+src_rect = np.array(((595, 447),
+                     (237, 697),
+                     (1085, 697),
+                     (686, 447)), dtype=np.float32)
 dst_rect = np.array(((300, 0),
                      (300, 720),
                      (980, 720),
@@ -22,8 +22,7 @@ dst_rect = np.array(((300, 0),
 
 camera.setup_perspective_transform(src_rect, dst_rect)
 
-# y_mpp = 35 / 720
-y_mpp = 35 / 720
+y_mpp = 30 / 720
 x_mpp = 3.7 / (980-300)
 import cv2
 import matplotlib.pyplot as plt
