@@ -210,9 +210,10 @@ def draw_polygon(image, poly_points, color):
 
 
 def _get_extract_kwarg(kwargs, key, default_value=None):
-    value = kwargs[key]
-    if value is None:
+    if key not in kwargs:
         value = default_value
+    else:
+        value = kwargs[key]
     return value
 
 
