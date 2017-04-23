@@ -7,7 +7,6 @@ import cv2
 
 
 class Processor(object):
-
     def __init__(self):
         self.sobelx_thresh = (40, 170)
         self.v_thresh = (200, 256)
@@ -86,7 +85,7 @@ class Processor(object):
     def draw_polygon(self, image, poly_points, color):
         cv2.polylines(image, np.int32([poly_points]), 1, color, 3)
 
-    def apply_slide_window_search(self, image, debug_image=None):
+    def find_lane_centers_by_sliding_window_search(self, image, debug_image=None):
         """Find left lane and right lane by applying slide window search al
         """
         centers = []
@@ -166,6 +165,27 @@ class Processor(object):
             centers.append((left_center, right_center))
         return np.array(centers)
 
+    def find_lane_center_by_prior_fit(self, image, left_fit_params, right_fit_params, num_windows=10):
+        """Perform a lanes search by using previous fit parameters.
+        """
+        # divide the whole images into 10 horizontal strips. calculate the height for each strip
+        slice_height = int(image.shape[0] / num_windows)
+
+        l_a, l_b, l_c = left_fit_params
+        r_a, r_b, r_c = right_fit_params
+
+        centers = []
+        for i in range(num_windows):
+            # calculating the y coordinates for the slice
+            slice_y_max = image.shape[0] - slice_height * i
+            slice_y_min = image.shape[0] - slice_height * (i + 1)
+            # calculating the window center based the the provided fit parameters
+            center_y = (slice_y_max + slice_y_min) / 2
+            l_center_x = l_a * center_y ** 2 + l_b * center_y + l_c
+            r_center_x = r_a * center_y ** 2 + r_b * center_y + r_c
+            centers.append((l_center_x, r_center_x))
+        return np.array(centers)
+
     def fit_polynomial_for_lane(self, image, centers):
         num_slices = 10
         # divide the whole images into 10 horizontal strips. calculate the height for each strip
@@ -207,13 +227,13 @@ class Processor(object):
         mask = np.zeros_like(np.stack((image, image, image), axis=2), dtype=np.uint8)
         return cv2.fillPoly(mask, np.int32([poly_points]), color=color)
 
-    def compute_curvature(self, mpp, lane_points):
+    def compute_curvature(self, mpp, lane_points, at_y):
         a, b, c = np.polyfit(lane_points[:, 0] * mpp[0], lane_points[:, 1] * mpp[1], 2)
-        y = np.max(lane_points[0,:])
+        print(a, b, c)
 
-        d1 = 2 * a * y * mpp[0] + b
+        d1 = 2 * a * at_y * mpp[0] + b
         d2 = 2 * a
-        curvature = (1 + d1 ** 2) ** (3/2) / abs(d2)
+        curvature = ((1 + d1 ** 2) ** (3 / 2)) / abs(d2)
         return curvature
 
 
@@ -240,7 +260,7 @@ if __name__ == '__main__':
 
     camera.setup_perspective_transform(src_rect, dst_rect)
 
-    #processor.draw_polygon(extracted, src_rect, 1)
+    # processor.draw_polygon(extracted, src_rect, 1)
     plot.imshow(extracted)
     plot.show()
     birdview = camera.warp_perspective(extracted)
@@ -249,10 +269,10 @@ if __name__ == '__main__':
     plot.imshow(overlapped)
     plot.show()
 
-    lane_centers = processor.apply_slide_window_search(birdview)
+    lane_centers = processor.find_lane_centers_by_sliding_window_search(birdview)
 
-    l_polyfit,lp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[0])
-    r_polyfit,rp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[1])
+    l_polyfit, lp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[0])
+    r_polyfit, rp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[1])
     mask_img = processor.get_birdview_lane_mask_image(birdview, l_polyfit, r_polyfit)
     mask_img[lp[:, 0], lp[:, 1]] = [255, 0, 0]
     mask_img[rp[:, 0], rp[:, 1]] = [0, 0, 255]
@@ -263,5 +283,5 @@ if __name__ == '__main__':
 
     result = cv2.addWeighted(img, 1, unwarp_mask, 0.3, 0)
 
-    print(processor.compute_curvature((30/720, 3.7/600), lp))
-    print(processor.compute_curvature((30/720, 3.7/600), rp))
+    print(processor.compute_curvature((30 / 720, 3.7 / 600), lp))
+    print(processor.compute_curvature((30 / 720, 3.7 / 600), rp))

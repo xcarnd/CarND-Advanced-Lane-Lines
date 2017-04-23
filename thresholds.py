@@ -182,7 +182,7 @@ if __name__ == '__main__':
             result[(p21.current_rendered_data > 0) & (p22.current_rendered_data > 0)] = 1
             birdview = camera.warp_perspective(result)
             bv = np.stack((birdview, birdview, birdview), axis=2) * 255
-            lane_centers = processor.apply_slide_window_search(birdview, debug_image=bv)
+            lane_centers = processor.find_lane_centers_by_sliding_window_search(birdview, debug_image=bv)
             # lf, lp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[0])
             # rf, rp = processor.fit_polynomial_for_lane(birdview, lane_centers.T[1])
             # mask = processor.get_birdview_lane_mask_image(birdview, lf, rf)
