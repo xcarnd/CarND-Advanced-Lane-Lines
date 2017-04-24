@@ -7,7 +7,7 @@ import cv2
 
 
 def find_lane_centers_by_sliding_window_search(image, debug_image=None):
-    """Find left lane and right lane by applying slide window search al
+    """Find left lane and right lane by applying slide window search algorithm
     """
     centers = []
 
@@ -110,6 +110,7 @@ def find_lane_center_by_prior_fit(image, left_fit_params, right_fit_params, num_
 
 
 def fit_polynomial_for_lane(image, centers):
+    """Fitting a polynomial to describe the lane in the image by specifying search window centers"""
     num_slices = 10
     # divide the whole images into 10 horizontal strips. calculate the height for each strip
     slice_height = int(image.shape[0] / num_slices)
@@ -138,6 +139,8 @@ def fit_polynomial_for_lane(image, centers):
 
 
 def get_birdview_lane_mask_image(image, lane_left_fit, lane_right_fit, color=(0, 255, 0)):
+    """Returns a birdeye-view lane masking image.
+    """
     l_y = np.linspace(0, image.shape[0] - 1, image.shape[0])
     l_x = lane_left_fit[0] * l_y ** 2 + lane_left_fit[1] * l_y + lane_left_fit[2]
     l_x = l_x.astype(np.int)
@@ -157,6 +160,8 @@ def get_birdview_lane_mask_image(image, lane_left_fit, lane_right_fit, color=(0,
 
 
 def compute_curvature(mpp, lane_points, at_y):
+    """Compute the lane curvature.
+    """
     a, b, c = np.polyfit(lane_points[:, 0] * mpp[0], lane_points[:, 1] * mpp[1], 2)
     d1 = 2 * a * at_y * mpp[0] + b
     d2 = 2 * a
@@ -210,7 +215,6 @@ def threshold(img_plane, lower_bound, upper_bound, normalizing=True):
 def draw_polygon(image, poly_points, color):
     cv2.polylines(image, np.int32([poly_points]), 1, color, 3)
 
-
 def _get_extract_kwarg(kwargs, key, default_value=None):
     if key not in kwargs:
         value = default_value
@@ -218,9 +222,8 @@ def _get_extract_kwarg(kwargs, key, default_value=None):
         value = kwargs[key]
     return value
 
-
 def extract(image, **kwargs):
-    """Extract lane line from the specifying img
+    """Extract lane line from the specifying image.
     """
     sobelx_thresh = _get_extract_kwarg(kwargs, 'sobelx_thresh', (40, 170))
     v_thresh = _get_extract_kwarg(kwargs, 'v_thresh', (200, 256))
