@@ -99,7 +99,7 @@ if __name__ == '__main__':
                   (1000, 720),
                   (1000, 0)), dtype=np.float32))
 
-    next_img = "./test_images/straight_lines2.jpg"
+    next_img = "./seq1/frame1034.jpg"
     img = cv2.imread(next_img)
     undistorted2 = camera.undistort(img)
     birdview = camera.warp_perspective(undistorted2)

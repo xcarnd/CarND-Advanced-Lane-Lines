@@ -28,23 +28,16 @@ class LaneDetectionPipeline(object):
         r_polyfit, rp = processing.fit_polynomial_for_lane(birdview, lane_centers.T[1])
 
         mask_img = processing.get_birdview_lane_mask_image(birdview, l_polyfit, r_polyfit)
-
-        # birdviewRgb = np.stack((birdview, birdview, birdview), axis=2)
-        # birdviewRgb[lp[:, 0], lp[:, 1]] = [255, 0, 0]
-        # birdviewRgb[rp[:, 0], rp[:, 1]] = [0, 0, 255]
-        # birdviewRgb = cv2.addWeighted(birdviewRgb, 1, mask_img, 0.3, 0)
-        #
-        # plt.imshow(birdviewRgb)
-        # plt.show()
+        mask_img[lp[:, 0], lp[:, 1]] = (255, 0, 0)
+        mask_img[rp[:, 0], rp[:, 1]] = (0, 0, 255)
 
         unwarp_mask = self.camera.warp_inverse_perspective(mask_img)
-        result = cv2.addWeighted(img, 1, unwarp_mask, 0.3, 0)
+        result = cv2.addWeighted(undistorted_img, 1, unwarp_mask, 0.3, 0)
         l_curvature = processing.compute_curvature((self.y_mpp, self.x_mpp), lp, img.shape[0])
         r_curvature = processing.compute_curvature((self.y_mpp, self.x_mpp), rp, img.shape[0])
         center_x = img.shape[1] / 2
         actual_x = np.sum(lane_centers[0]) / 2
         offset_x = actual_x - center_x
-        print(offset_x)
         offset_m = self.x_mpp * offset_x
         cv2.putText(result, "Radius of Curvature: {:.1f}m".format((l_curvature + r_curvature) / 2),
                     (25, 50),

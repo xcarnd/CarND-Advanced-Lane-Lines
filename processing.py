@@ -117,7 +117,10 @@ def fit_polynomial_for_lane(image, centers):
     # window template, which will be convolved with the slice the find the peak of signal
     window_width = 50
 
-    window_points = []
+    # minimum number of pixels for an accepting window
+    min_numpix = 50
+
+    window_points = np.array([], dtype=np.uint8).reshape((-1, 2))
     for i in range(num_slices):
         # calculating the y coordinates for the slice
         slice_y_max = image.shape[0] - slice_height * i
@@ -127,8 +130,9 @@ def fit_polynomial_for_lane(image, centers):
         window = image[slice_y_min:slice_y_max, window_min:window_max]
         y_coords, x_coords = window.nonzero()
         points = np.stack((y_coords + slice_y_min, x_coords + window_min), axis=1)
-        window_points.append(points)
-    window_points = np.concatenate(window_points)
+        if len(points) >= min_numpix:
+            wps = np.concatenate((window_points, points))
+        window_points = wps
     fitting = np.polyfit(window_points[:, 0], window_points[:, 1], 2)
     return fitting, window_points
 
@@ -154,8 +158,6 @@ def get_birdview_lane_mask_image(image, lane_left_fit, lane_right_fit, color=(0,
 
 def compute_curvature(mpp, lane_points, at_y):
     a, b, c = np.polyfit(lane_points[:, 0] * mpp[0], lane_points[:, 1] * mpp[1], 2)
-    print(a, b, c)
-
     d1 = 2 * a * at_y * mpp[0] + b
     d2 = 2 * a
     curvature = ((1 + d1 ** 2) ** (3 / 2)) / abs(d2)
@@ -293,5 +295,5 @@ if __name__ == '__main__':
 
     result = cv2.addWeighted(img, 1, unwarp_mask, 0.3, 0)
 
-    print(compute_curvature((30 / 720, 3.7 / 600), lp))
-    print(compute_curvature((30 / 720, 3.7 / 600), rp))
+    print(compute_curvature((30 / 720, 3.7 / 600), lp, mask_img.shape[0]))
+    print(compute_curvature((30 / 720, 3.7 / 600), rp, mask_img.shape[0]))
