@@ -48,9 +48,9 @@ clip = "project_video"
 clip_output_path = "./{}_output.mp4".format(clip)
 input_clip = VideoFileClip('./{}.mp4'.format(clip))
 output_clip = input_clip.fl_image(lambda img: pipeline.process(img))
-# output_clip.write_videofile(clip_output_path, audio=False)
+output_clip.write_videofile(clip_output_path, audio=False)
 # input_clip.write_images_sequence("seq1/frame%04d.jpg")
-output_clip.write_images_sequence("debug/frame%04d.jpg")
+# output_clip.write_images_sequence("debug/frame%04d.jpg")
 
 
 # import cv2

@@ -38,8 +38,8 @@ class LaneDetectionPipeline(object):
 
         weights = self.last_fit_weights[len(poly_fits) - 1]
         polylines = np.array(poly_fits)
-        l_polyfit = fitting.average_polylines(polylines[:, 0], weights, (0, img.shape[0]), 50)
-        r_polyfit = fitting.average_polylines(polylines[:, 1], weights, (0, img.shape[0]), 50)
+        l_polyfit = fitting.average_polylines(polylines[:, 0], weights, (0, img.shape[0]), 5)
+        r_polyfit = fitting.average_polylines(polylines[:, 1], weights, (0, img.shape[0]), 5)
 
         mask_img = processing.get_birdview_lane_mask_image(birdview, l_polyfit, r_polyfit)
         mask_img[lp[:, 0], lp[:, 1]] = (255, 0, 0)

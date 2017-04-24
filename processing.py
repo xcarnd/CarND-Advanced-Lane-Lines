@@ -118,9 +118,6 @@ def fit_polynomial_for_lane(image, centers):
     # window template, which will be convolved with the slice the find the peak of signal
     window_width = 50
 
-    # minimum number of pixels for an accepting window
-    min_numpix = 50
-
     window_points = np.array([], dtype=np.uint8).reshape((-1, 2))
     for i in range(num_slices):
         # calculating the y coordinates for the slice
@@ -131,9 +128,8 @@ def fit_polynomial_for_lane(image, centers):
         window = image[slice_y_min:slice_y_max, window_min:window_max]
         y_coords, x_coords = window.nonzero()
         points = np.stack((y_coords + slice_y_min, x_coords + window_min), axis=1)
-        if len(points) >= min_numpix:
-            wps = np.concatenate((window_points, points))
-            window_points = wps
+        wps = np.concatenate((window_points, points))
+        window_points = wps
     fitting = np.polyfit(window_points[:, 0], window_points[:, 1], 2)
     return fitting, window_points
 
