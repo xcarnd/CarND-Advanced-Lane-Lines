@@ -2,6 +2,7 @@ import cv2
 import processing
 import matplotlib.pyplot as plt
 import numpy as np
+import fitting
 
 
 class LaneDetectionPipeline(object):
@@ -10,6 +11,12 @@ class LaneDetectionPipeline(object):
         self.x_mpp = x_mpp
         self.y_mpp = y_mpp
         self.last_fit = []
+        self.last_fit_weights = [
+            (1, ),
+            (0.43, 0.57),
+            (0.22, 0.33, 0.45),
+            (0.1, 0.2, 0.3, 0.4)
+        ]
 
     def process(self, img):
         """Processing the input image, returns the processed image."""
@@ -26,6 +33,13 @@ class LaneDetectionPipeline(object):
 
         l_polyfit, lp = processing.fit_polynomial_for_lane(birdview, lane_centers.T[0])
         r_polyfit, rp = processing.fit_polynomial_for_lane(birdview, lane_centers.T[1])
+
+        poly_fits = self.last_fit + [(l_polyfit, r_polyfit)]
+
+        weights = self.last_fit_weights[len(poly_fits) - 1]
+        polylines = np.array(poly_fits)
+        l_polyfit = fitting.average_polylines(polylines[:, 0], weights, (0, img.shape[0]), 50)
+        r_polyfit = fitting.average_polylines(polylines[:, 1], weights, (0, img.shape[0]), 50)
 
         mask_img = processing.get_birdview_lane_mask_image(birdview, l_polyfit, r_polyfit)
         mask_img[lp[:, 0], lp[:, 1]] = (255, 0, 0)
@@ -46,5 +60,8 @@ class LaneDetectionPipeline(object):
                     (25, 100),
                     cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 1)
 
-        self.last_fit = [(l_polyfit, r_polyfit)]
+        self.last_fit.append((l_polyfit, r_polyfit))
+        if len(self.last_fit) > 3:
+            del self.last_fit[0]
+
         return result
