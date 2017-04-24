@@ -143,7 +143,6 @@ if __name__ == '__main__':
     img5 = mpimg.imread('./test_images/test5.jpg')
     img6 = mpimg.imread('./test_images/test6.jpg')
 
-    processor = Processor()
     kernel_size = 3
 
     def p11_renderer(low, high):
