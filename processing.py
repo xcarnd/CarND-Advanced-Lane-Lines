@@ -132,7 +132,7 @@ def fit_polynomial_for_lane(image, centers):
         points = np.stack((y_coords + slice_y_min, x_coords + window_min), axis=1)
         if len(points) >= min_numpix:
             wps = np.concatenate((window_points, points))
-        window_points = wps
+            window_points = wps
     fitting = np.polyfit(window_points[:, 0], window_points[:, 1], 2)
     return fitting, window_points
 
