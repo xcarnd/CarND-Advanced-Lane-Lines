@@ -1,24 +1,24 @@
 # -*- encoding: utf-8 -*-
 
 import matplotlib.pyplot as plot
-import matplotlib.image as mpimg
 import numpy as np
 import cv2
 
 
-def find_lane_centers_by_sliding_window_search(image, debug_image=None):
+def find_lane_centers_by_sliding_window_search(image, num_window=10, debug_image=None):
     """Find left lane and right lane by applying slide window search algorithm
     """
+    # the array stored the searching window centers
     centers = []
 
-    num_slices = 10
     # divide the whole images into 10 horizontal strips. calculate the height for each strip
-    slice_height = int(image.shape[0] / num_slices)
+    slice_height = int(image.shape[0] / num_window)
 
     # window template, which will be convolved with the slice the find the peak of signal
     window_width = 50
     window_template = np.ones(window_width)
 
+    # limit the searching within the box center +/- search_margin
     search_margin = 100
 
     # determine the starting point for searching. summing the quarter bottom of image to get slice
@@ -29,13 +29,14 @@ def find_lane_centers_by_sliding_window_search(image, debug_image=None):
     right_sum = np.sum(image[image.shape[0] - start_points_search_region_height:, mid_point:], axis=0)
     right_center = np.argmax(np.convolve(window_template, right_sum)) - int(window_width / 2) + mid_point
 
-    # when left_center == 0 and/or right_center == mid_point, it means the algo cannot find an appropreate starting
+    # when left_center <= 0 and/or right_center <= mid_point, it means the algo cannot find an appropriate starting
     # position for lane search
     #
-    # returns None for such cases to inform the caller
+    # returns None for such case to inform the caller
     if left_center <= 0 or right_center <= mid_point:
         return None, None, None
 
+    # search pixels within the box with window_width wide.
     left_min = int(left_center - window_width / 2)
     left_max = int(left_center + window_width / 2)
     right_min = int(right_center - window_width / 2)
@@ -60,6 +61,7 @@ def find_lane_centers_by_sliding_window_search(image, debug_image=None):
     right_points.append(right_window_points)
     centers.append((left_center, right_center))
 
+    # codes for debug use
     if debug_image is not None:
         cv2.rectangle(debug_image,
                       (int(left_center - window_width / 2), image.shape[0]),
@@ -70,7 +72,7 @@ def find_lane_centers_by_sliding_window_search(image, debug_image=None):
                       (int(right_center + window_width / 2), image.shape[0] - slice_height),
                       (0, 255, 0), 3)
 
-    for i in range(1, num_slices):
+    for i in range(1, num_window):
         # calculating the y coordinates for the slice
         slice_y_max = image.shape[0] - slice_height * i
         slice_y_min = image.shape[0] - slice_height * (i + 1)
@@ -83,6 +85,11 @@ def find_lane_centers_by_sliding_window_search(image, debug_image=None):
 
         l_search_min = int(max((left_center - search_margin + offset, 0)))
         l_search_max = int(min((left_center + search_margin + offset, image.shape[1])))
+        # the resulting convolution signal might contains many equal maximum values, e.g.:
+        # [0, 0, 0, 1, 3, 7, 8, 90, 120, 120, 120, 120, 120, 0, 0]
+        #
+        # use the mid point for the first and the last maximum as the final center.
+        #
         if len(conv_signal[l_search_min:l_search_max].nonzero()[0]) > 0:
             argmax = np.argmax(conv_signal[l_search_min:l_search_max])
             inverse_argmax = int((l_search_max - l_search_min) -
@@ -97,7 +104,7 @@ def find_lane_centers_by_sliding_window_search(image, debug_image=None):
                           (int(left_center + window_width / 2), slice_y_max),
                           (0, 255, 0), 3)
 
-        # same for the right side
+        # same for the right lane
         r_search_min = int(max((right_center - search_margin + offset, 0)))
         r_search_max = int(min((right_center + search_margin + offset, image.shape[1])))
         if len(conv_signal[r_search_min:r_search_max].nonzero()[0]) > 0:
@@ -106,6 +113,15 @@ def find_lane_centers_by_sliding_window_search(image, debug_image=None):
                                  np.argmax(conv_signal[r_search_max:r_search_min:-1]))
             right_center = int((argmax + inverse_argmax) / 2 + r_search_min - offset)
 
+        # codes for debugging
+        if debug_image is not None:
+            cv2.circle(debug_image, (right_center, int((slice_y_min + slice_y_max) / 2)), 1, (255, 0, 0), 2)
+            cv2.rectangle(debug_image,
+                          (int(right_center - window_width / 2), slice_y_min),
+                          (int(right_center + window_width / 2), slice_y_max),
+                          (0, 255, 0), 3)
+
+        # finding out all the points within the windows
         left_min = int(left_center - window_width / 2)
         left_max = int(left_center + window_width / 2)
         right_min = int(right_center - window_width / 2)
@@ -123,16 +139,12 @@ def find_lane_centers_by_sliding_window_search(image, debug_image=None):
         right_points.append(right_window_points)
         centers.append((left_center, right_center))
 
-        # codes for debugging
-        if debug_image is not None:
-            cv2.circle(debug_image, (right_center, int((slice_y_min + slice_y_max) / 2)), 1, (255, 0, 0), 2)
-            cv2.rectangle(debug_image,
-                          (int(right_center - window_width / 2), slice_y_min),
-                          (int(right_center + window_width / 2), slice_y_max),
-                          (0, 255, 0), 3)
     lp, rp = np.concatenate(left_points), np.concatenate(right_points)
+
+    # if no pixels found in the window, lane search failed.
     if len(lp) == 0 or len(rp) == 0:
         return None, None, None
+
     return lp, rp, np.array(centers)
 
 
@@ -160,6 +172,7 @@ def find_lane_center_by_prior_fit(image, left_fit_params, right_fit_params, num_
         left_center = l_a * center_y ** 2 + l_b * center_y + l_c
         right_center = r_a * center_y ** 2 + r_b * center_y + r_c
 
+        # find pixels within the window centered at left_center/right_center, with window_width wide.
         left_min = int(left_center - window_width / 2)
         left_max = int(left_center + window_width / 2)
         right_min = int(right_center - window_width / 2)
@@ -263,6 +276,7 @@ def threshold(img_plane, lower_bound, upper_bound, normalizing=True):
     return mask
 
 
+# for debug use only
 def draw_polygon(image, poly_points, color):
     cv2.polylines(image, np.int32([poly_points]), 1, color, 3)
 
@@ -276,8 +290,12 @@ def _get_extract_kwarg(kwargs, key, default_value=None):
 
 
 def extract(image, **kwargs):
-    """Extract lane line from the specifying image.
+    """Extract binary from the specifying image.
     """
+
+    # I combined sobelx thresholds with v channel threshold (for hsv color space)
+    # and s channel threshold (for hls color space)
+
     sobelx_thresh = _get_extract_kwarg(kwargs, 'sobelx_thresh', (40, 170))
     v_thresh = _get_extract_kwarg(kwargs, 'v_thresh', (200, 256))
     s_thresh = _get_extract_kwarg(kwargs, 's_thresh', (100, 256))
@@ -296,7 +314,6 @@ def extract(image, **kwargs):
     # masking applied to s plane
     # apply sobelx operator and sobely operator
     v_sobelx = np.abs(apply_sobelx(v_plane, sobel_kernel_size))
-    v_sobely = np.abs(apply_sobely(v_plane, sobel_kernel_size))
     v_sobelx_thresh = threshold(v_sobelx, sobelx_thresh[0], sobelx_thresh[1])
     v_thresh = threshold(v_plane, v_thresh[0], v_thresh[1], normalizing=False)
     s_thresh = threshold(s_plane, s_thresh[0], s_thresh[1], normalizing=False)
@@ -305,58 +322,3 @@ def extract(image, **kwargs):
     mask[(v_sobelx_thresh == 1) | ((s_thresh == 1) & (v_thresh == 1))] = 1
 
     return mask
-
-
-if __name__ == '__main__':
-    from camera import Camera
-
-    test_img = './undistorted.jpg'
-    img = cv2.imread(test_img)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    binary = extract(img)
-
-    extracted = binary
-
-    camera = Camera()
-    src_rect = np.array(((595, 447),
-                         (237, 697),
-                         (1085, 697),
-                         (686, 447)), dtype=np.float32)
-    # src rect for challenge video
-    # src_rect = np.array(((607, 472),
-    #                      (298, 707),
-    #                      (1123, 707),
-    #                      (710, 472)), dtype=np.float32)
-    dst_rect = np.array(((300, 0),
-                         (300, 720),
-                         (980, 720),
-                         (980, 0)), dtype=np.float32)
-
-    camera.setup_perspective_transform(src_rect, dst_rect)
-
-    # processor.draw_polygon(extracted, src_rect, 1)
-    plot.imshow(extracted)
-    plot.show()
-    birdview = camera.warp_perspective(extracted)
-    bvrgb = np.stack((birdview, birdview, birdview), axis=2) * 255
-    overlapped = cv2.addWeighted(bvrgb, 0.5, camera.warp_perspective(img), 0.5, 0)
-    plot.imshow(overlapped)
-    plot.show()
-
-    lp, rp, lane_centers = find_lane_centers_by_sliding_window_search(birdview)
-    print(lp)
-
-    l_polyfit = fit_polynomial_for_lane(lp)
-    r_polyfit = fit_polynomial_for_lane(rp)
-    mask_img = get_birdview_lane_mask_image(birdview, l_polyfit, r_polyfit)
-    mask_img[lp[:, 0], lp[:, 1]] = [255, 0, 0]
-    mask_img[rp[:, 0], rp[:, 1]] = [0, 0, 255]
-
-    plot.imshow(mask_img)
-    plot.show()
-    unwarp_mask = camera.warp_inverse_perspective(mask_img)
-
-    result = cv2.addWeighted(img, 1, unwarp_mask, 0.3, 0)
-
-    print(compute_curvature((30 / 720, 3.7 / 600), lp, mask_img.shape[0]))
-    print(compute_curvature((30 / 720, 3.7 / 600), rp, mask_img.shape[0]))
