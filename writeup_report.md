@@ -125,27 +125,35 @@ Here's an example for the resulting output:
 
 ####5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+I did this in lines 226 - 233 in the file `processing.py`. The main idea is converting each points in pixel to points in meter then fit again. Depending on the `src_rect` I picked for perspective transform, I set the meter in pixel in x direction to be (3.7 / (980 - 300)), meter in pixel in y direction to be (30 / 720).
 
-####6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+After fitting polynomials in meters, curvatures are calcuated using the formular:
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+Average of the curvature of the left lane and right lane is taken and used as the curvature of the road.
 
-![alt text][image6]
+The center of the detected lanes is calculated too and compared with the center of the image. The difference is then converted into meters. This can be viewed as the off-center distance for the vehicle.
+
+Codes for this step can be found in lines 101 - 112 in `pipeline.py`.
+ 
+#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+
+I implemented this step in lines 205 - 233 in `processing.py` in the function `get_birdview_lane_mask_image()` and in lines 92 - 98 in `pipeline.py`.  Here is an example of my result on a test image:
+
+![Annotated result][annotated_result]
 
 ---
 
-###Pipeline (video)
+### Pipeline (video)
 
 ####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./project_video_output.mp4)
 
 ---
 
-###Discussion
+### Discussion
 
-####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
 Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
 
