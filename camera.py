@@ -89,17 +89,25 @@ if __name__ == '__main__':
     ax2.set_title('Undistorted image')
     f.savefig('./output_images/camera_calibration.png')
 
-    camera.setup_perspective_transform(
-        np.array(((597, 446),
-                  (266, 670),
-                  (1038, 670),
-                  (682, 446)), dtype=np.float32),
-        np.array(((280, 0),
-                  (280, 720),
-                  (1000, 720),
-                  (1000, 0)), dtype=np.float32))
+    # setup perspective transform
+    src_rect = np.array(((595, 447),
+                         (237, 697),
+                         (1085, 697),
+                         (686, 447)), dtype=np.float32)
+    # src rect for challenge video
+    src_rect = np.array(((607, 472),
+                         (298, 707),
+                         (1123, 707),
+                         (710, 472)), dtype=np.float32)
 
-    next_img = "./seq1/frame1034.jpg"
+    dst_rect = np.array(((300, 0),
+                         (300, 720),
+                         (980, 720),
+                         (980, 0)), dtype=np.float32)
+
+    camera.setup_perspective_transform(src_rect, dst_rect)
+
+    next_img = "./debug/frame0000.jpg"
     img = cv2.imread(next_img)
     undistorted2 = camera.undistort(img)
     birdview = camera.warp_perspective(undistorted2)

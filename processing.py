@@ -130,9 +130,10 @@ def find_lane_centers_by_sliding_window_search(image, debug_image=None):
                           (int(right_center - window_width / 2), slice_y_min),
                           (int(right_center + window_width / 2), slice_y_max),
                           (0, 255, 0), 3)
-    if len(left_points) == 0:
+    lp, rp = np.concatenate(left_points), np.concatenate(right_points)
+    if len(lp) == 0 or len(rp) == 0:
         return None, None, None
-    return np.concatenate(left_points), np.concatenate(right_points), np.array(centers)
+    return lp, rp, np.array(centers)
 
 
 def find_lane_center_by_prior_fit(image, left_fit_params, right_fit_params, num_windows=10):
@@ -176,9 +177,10 @@ def find_lane_center_by_prior_fit(image, left_fit_params, right_fit_params, num_
         right_points.append(right_window_points)
         centers.append((left_center, right_center))
 
-    if len(left_points) == 0:
+    lp, rp = np.concatenate(left_points), np.concatenate(right_points)
+    if len(lp) == 0 or len(rp) == 0:
         return None, None, None
-    return np.concatenate(left_points), np.concatenate(right_points), np.array(centers)
+    return lp, rp, np.array(centers)
 
 
 def fit_polynomial_for_lane(lane_points):
@@ -316,10 +318,15 @@ if __name__ == '__main__':
     extracted = binary
 
     camera = Camera()
-    src_rect = np.array(((597, 446),
-                         (266, 670),
-                         (1038, 670),
-                         (682, 446)), dtype=np.float32)
+    src_rect = np.array(((595, 447),
+                         (237, 697),
+                         (1085, 697),
+                         (686, 447)), dtype=np.float32)
+    # src rect for challenge video
+    # src_rect = np.array(((607, 472),
+    #                      (298, 707),
+    #                      (1123, 707),
+    #                      (710, 472)), dtype=np.float32)
     dst_rect = np.array(((300, 0),
                          (300, 720),
                          (980, 720),

@@ -11,7 +11,8 @@ class LaneDetectionPipeline(object):
         self.x_mpp = x_mpp
         self.y_mpp = y_mpp
         self.last_fit = []
-        self.last_fit_points = []
+        self.last_fit_points = None
+        self.last_lane_centers = None
         self.last_fit_weights = [
             (1, ),
             (0.4, 0.6),
@@ -19,6 +20,10 @@ class LaneDetectionPipeline(object):
             (0.1, 0.1, 0.1, 0.7)
         ]
         self.continuous_missing = 0
+
+    def process_undistort(self, img):
+        undistorted_img = self.camera.undistort(img)
+        return undistorted_img
 
     def process(self, img):
         """Processing the input image, returns the processed image."""
@@ -48,17 +53,19 @@ class LaneDetectionPipeline(object):
                 if len(self.last_fit) > 0:
                     # if there is any last fit records, use it as the fitting result
                     last_fit = self.last_fit[-1]
-                    last_fit_points = self.last_fit_points[-1]
+                    last_fit_points = self.last_fit_points
                     l_polyfit, r_polyfit = last_fit
-                    lp, rp = last_fit_points
+                    (lp, rp), lane_centers = last_fit_points, self.last_lane_centers
                 else:
                     return undistorted_img
         else:
             self.continuous_missing = 0
+            print(len(lp), len(rp))
             l_polyfit = processing.fit_polynomial_for_lane(lp)
             r_polyfit = processing.fit_polynomial_for_lane(rp)
 
             self.last_fit_points = (lp, rp)
+            self.last_lane_centers = lane_centers
 
         # averaging last 3 polylines with the current one to avoid jettering
         poly_fits = self.last_fit + [(l_polyfit, r_polyfit)]
