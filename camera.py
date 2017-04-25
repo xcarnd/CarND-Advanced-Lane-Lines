@@ -44,8 +44,6 @@ class Camera(object):
         _, cmx, dist, _, _ = cv2.calibrateCamera(objp, imgp, img_size, None, None)
         self.cameraMatrix = cmx
         self.distortionCoeff = dist
-        self.persp_trans_src_rect = None
-        self.persp_trans_dst_rect = None
 
     def undistort(self, image):
         """Undistort offered image.
@@ -57,8 +55,6 @@ class Camera(object):
     def setup_perspective_transform(self, src_rect, dst_rect):
         """Setup perspective transform by the specified source rect and destination rect.
         """
-        self.persp_trans_src_rect = src_rect
-        self.persp_trans_dst_rect = dst_rect
         self.persp_trans_matrix = cv2.getPerspectiveTransform(src_rect, dst_rect)
         self.inv_persp_trans_matrix = cv2.getPerspectiveTransform(dst_rect, src_rect)
 
