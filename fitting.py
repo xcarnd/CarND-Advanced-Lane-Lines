@@ -27,22 +27,3 @@ def average_polylines(polylines, weights, y_range, abs_x_noise):
     pts = np.concatenate(samples)
     avg = np.polyfit(pts[:, 0], pts[:, 1], 2)
     return avg
-
-
-if __name__ == '__main__':
-    a1, b1, c1, a2, b2, c2 = 3e-4, 0.003, 0.1, 1.2e-4, 3e-4, 10
-    plt.gca().invert_yaxis()
-
-    y = np.linspace(0, 719, 720)
-    x1 = a1 * y ** 2 + b1 * y + c1
-    plt.plot(x1, y, 'r')
-
-    x2 = a2 * y ** 2 + b2 * y + c2
-    plt.plot(x2, y, 'g')
-
-    avg = average_polylines(((a1, b1, c1), (a2, b2, c2)), (0.3, 0.4), (0, 720), 50)
-    aa, ab, ac = avg
-    ax = aa * y ** 2 + ab * y + ac
-    plt.plot(ax, y, 'b')
-
-    plt.show()
