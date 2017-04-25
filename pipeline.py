@@ -1,34 +1,47 @@
 import cv2
 import processing
-import matplotlib.pyplot as plt
 import numpy as np
 import fitting
 
 
 class LaneDetectionPipeline(object):
     def __init__(self, camera, y_mpp, x_mpp):
+        # camera object
         self.camera = camera
+        # meters per pixel settings
         self.x_mpp = x_mpp
         self.y_mpp = y_mpp
+        # fitting results for the last frames
         self.last_fit = []
+        # lane points for the last frame
         self.last_fit_points = None
+        # lane centers for the last frame
         self.last_lane_centers = None
+        # weights when averaging with result from last frames
         self.last_fit_weights = [
             (1, ),
             (0.4, 0.6),
             (0.2, 0.2, 0.6),
             (0.1, 0.1, 0.1, 0.7)
         ]
+        # how many continuous lane finding failures
         self.continuous_missing = 0
 
     def process_undistort(self, img):
+        """For debug use. Undistort the given image only.
+        """
         undistorted_img = self.camera.undistort(img)
         return undistorted_img
 
     def process(self, img):
         """Processing the input image, returns the processed image."""
+        # undistort image
         undistorted_img = self.camera.undistort(img)
+
+        # extract binary feature image from the undistorted image
         extracted = processing.extract(undistorted_img)
+
+        # get warped, birdview image
         birdview = self.camera.warp_perspective(extracted)
 
         # if we've successfully fitting a lane in previous frames, use the latest one to find
@@ -51,16 +64,17 @@ class LaneDetectionPipeline(object):
             else:
                 # use last fitting result if any
                 if len(self.last_fit) > 0:
-                    # if there is any last fit records, use it as the fitting result
+                    # if there is any last fitting records, use it as the fitting result
                     last_fit = self.last_fit[-1]
                     last_fit_points = self.last_fit_points
                     l_polyfit, r_polyfit = last_fit
                     (lp, rp), lane_centers = last_fit_points, self.last_lane_centers
                 else:
+                    # no last fitting information
                     return undistorted_img
         else:
+            # left lane and right lane are found. use the points to fit polynomials for the lanes.
             self.continuous_missing = 0
-            print(len(lp), len(rp))
             l_polyfit = processing.fit_polynomial_for_lane(lp)
             r_polyfit = processing.fit_polynomial_for_lane(rp)
 
@@ -98,9 +112,10 @@ class LaneDetectionPipeline(object):
                     cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 1)
 
         if self.continuous_missing == 0:
-            # append the window search result only when this is a success search
+            # append the window search result when this is a successful search
             self.last_fit.append((l_polyfit, r_polyfit))
             if len(self.last_fit) > 3:
+                # only store the results for last 4 frames.
                 del self.last_fit[0]
 
         return result
