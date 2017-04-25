@@ -53,43 +53,73 @@ To demonstrate this step, I will describe how I apply the distortion correction 
 ![Undistorted image][undistorted_image2]
 
 ####2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+I used a combination of color and gradient thresholds to generate a binary image. Thresholding steps
+can be found at lines 292 - 324 in `processing.py`. To summarize briefly, gaussian blur filter will be applied to the image first to reduce nosies. After that, thresholds the v value in HSV color space and s value in HSL color space to a specific range. Meanwhile, Sobel operator in x direction is applied on the v channel. Finally, combine all of these thresholds to get the final binary image.
 
-![alt text][image3]
+Here's an example of my output for this step.
 
-####3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
+![Binary image][binary_image]
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+#### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
+
+The code for my perspective transform includes:
+ 
+1. A class method called `setup_perspective_transform()` in class `Camera`, which appears in lines 55 - 59 in the file `camera.py`. This method is used to specify the source rect (as the formal argument `src_rect`) before perspective transform and destination rect (as the formal argument `dst_rect`) after perspective transform.
+
+2. A class method called `warp_perspective()` in class `Camera`, which appears in lines 61 - 65 in the file `camera.py`. This method is used to perform perspective transform on any given image.
+
+3. A class method called `warp_inverse_perspective()` in class `Camera`, which appears in line 67 - 70 in the file `camera.py`. This method is used to perform inverse perspective transform on any given image.
+
+Once perspective transform is setup via `setup_perspective_transform()`, the transform matrix and inverse transform matrix will be remembered in `Camera` instance for later use.
+
+The perspective transform matrix is assumed to be unchanged throughout the project video. `src_rect` and `dst_rect` are hardcoded in the following manner:
 
 ```
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
-
+src_rect = np.array(((595, 447),
+                     (237, 697),
+                     (1085, 697),
+                     (686, 447)), dtype=np.float32)
+dst_rect = np.array(((300, 0),
+                     (300, 720),
+                     (980, 720),
+                     (980, 0)), dtype=np.float32)
 ```
-This resulted in the following source and destination points:
+
+This resulted in the following mapping:
+
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+| 595, 447      | 300, 0        | 
+| 237, 697      | 300, 720      |
+| 1085, 697     | 980, 720      |
+| 686, 447      | 980, 0        |
 
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+I verified that my perspective transform was working as expected by drawing the `src_rect` and `dst_rect` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![alt text][image4]
+![Warped image][warped]
 
-####4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+#### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+After warping the extracted binary image into a bird-eye perspective view, I used a sliding window search algorithm to identify pixels for a lane. The whole processing procedure can be found in class method `process()` in class `LaneDetectionPipeline` in lines 36 - 121 for file `pipeline.py`. It is consisted of several parts:
+
+1. The process of extracting bird-eye view binary image, in lines 39 - 45.
+
+2. The process for finding lane pixels, in lines 49 - 54. The process can again divided into two parts:
+
+    1. When no fitting information for last few frames is available, the pipeline will perform a full sliding window search. My implementation of sliding window search is much similar to the implementation in the course video. I used the convolution approach since it's more concise. Codes for sliding window search can be found in lines 8 - 148 in `processing.py`.
+    
+    2. When fitting information for last few frames are available, the pipeline will search the pixels for the lanes of current frame by using the polynomial fit in the last frame. It will first by sampling lane center points from the polynomial, and use the center points to do pixeles search. Codes for this can be found in lines 151 - 196 in `processing.py`.
+    
+   In either case the points found will be returned. If left lane/right lane cannot be found by this step, the points found and polynomial fit in previous frame will be used, skipping step 3. If those are not available, then the pipeline will treat the current frame as a hard or a bad one and give up finding. The process for the current frame ends.
+
+3. Fitting a 2nd order polynomial to describe the points found in step 2. Related codes can be found in lines 78 - 79 in `pipeline.py`. Codes doing polynomial fit can be found in lines 199 - 202 in `processing.py`.
+
+4. Averaging polynomial for current frame with those in the previous frames. The way I used to averaging polynomial is, by sampling points from the given polynomials with different weights, then fitting a new polynomial for these points. Detailed codes can be found in file `fitting.py`.
+
+5. Creating a masking imaged which is used to combined with the undistorted image and unwarp, to produce the annotated output. Codes can be found in lines 92 - 98.
+
+Here's an example for the resulting output:
 
 ![alt text][image5]
 
