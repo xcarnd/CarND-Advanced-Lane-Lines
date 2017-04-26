@@ -166,5 +166,8 @@ Here's a [link to my video result](./output_images/project_video_output.mp4)
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
-
+I think the tricky part for this project is how to find out a good way to threshold the input image to a binary one. Although my combination is good enough to tackle with the project video, it do not perform well in the other challenge videos. Different lighting conditions may cause my s threshold and v threshold throwing away too much details, which result in few edges are detected. Meanwhile, the Sobel operator can yielding edges for not only lanes but also significant changing of colors, such as a dark shadow, which result in too many noise features. All of these will make my pipeline failed.
+  
+To make my pipeline more robust, I think in addition to trying more combination of thresholding, I can try to implement outliers detection in my pipeline so as to make the pipeline more resist to noise. Although I don't have a clear picture about how to do this, may be I can use the fact that I'm trying to fit a curve. Any pixels contributing to a drastic change in curvature might be denoted as outliers.
+   
+Another direction I think I can work on is to improve the sliding window search procedure. In my current pipeline, the center of searching window for the next slice is the same as the center detected in the current slice, but unless the lane to be found is actually a straight line, the center will surely change a bit from slice to slice. Leveraging this might make my pipeline more robust to noise too.
