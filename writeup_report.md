@@ -15,15 +15,16 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/undistort_output.png "Undistorted"
-[image2]: ./test_images/test1.jpg "Road Transformed"
-[image3]: ./examples/binary_combo_example.jpg "Binary Example"
-[image4]: ./examples/warped_straight_lines.jpg "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
 [video1]: ./project_video.mp4 "Video"
 [undistorted_image1]: ./output_images/camera_calibration.png "Camera calibration"
-[undistorted_image2]: ./output_images/undistorted.png "Undistorted"
+[undistorted_image2]: ./output_images/undistorted.jpg "Undistorted"
+[original_image2]: ./test_images/straight_lines2.jpg "Original"
+[binary_image]: ./output_images/binary.jpg "Binary"
+[src_rect]: ./output_images/before_warp_with_src_rect.jpg "Source Rect"
+[dst_rect]: ./output_images/after_warp_with_dst_rect.jpg "Destination Rect"
+[warped_masking]: ./output_images/warped_masking.jpg "Warped Masking"
+[unwarped_masking]: ./output_images/unwarped_masking.jpg "Unwarped Masking"
+[annotated_result]: ./output_images/annotated_result.jpg "Annotated Result"
 
 # [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -49,10 +50,11 @@ By invoking `undistort()` method in the `Camera` class (line 48 - 53 in `camera.
 ### Pipeline (single images)
 
 #### 1. Provide an example of a distortion-corrected image.
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
+Here're examples before applying distortion correction and that of applied:
+![Before correction image][original_image2]
 ![Undistorted image][undistorted_image2]
 
-####2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
+#### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 I used a combination of color and gradient thresholds to generate a binary image. Thresholding steps
 can be found at lines 292 - 324 in `processing.py`. To summarize briefly, gaussian blur filter will be applied to the image first to reduce nosies. After that, thresholds the v value in HSV color space and s value in HSL color space to a specific range. Meanwhile, Sobel operator in x direction is applied on the v channel. Finally, combine all of these thresholds to get the final binary image.
 
@@ -97,7 +99,13 @@ This resulted in the following mapping:
 
 I verified that my perspective transform was working as expected by drawing the `src_rect` and `dst_rect` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![Warped image][warped]
+This is the example binary image with source rect drawn on it:
+
+![With Source Rect][src_rect]
+
+This is the example warped binary image with destination rect drawn:
+
+![With Destination Rect][dst_rect]
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
@@ -119,11 +127,14 @@ After warping the extracted binary image into a bird-eye perspective view, I use
 
 5. Creating a masking imaged which is used to combined with the undistorted image and unwarp, to produce the annotated output. Codes can be found in lines 92 - 98.
 
-Here's an example for the resulting output:
+Here's an example for the warped masking image:
 
-![alt text][image5]
+![Warped masking image][warped_masking]
 
-####5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+and the unwarped masking image:
+![Unwarped masking image][unwarped_masking]
+
+#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
 I did this in lines 226 - 233 in the file `processing.py`. The main idea is converting each points in pixel to points in meter then fit again. Depending on the `src_rect` I picked for perspective transform, I set the meter in pixel in x direction to be (3.7 / (980 - 300)), meter in pixel in y direction to be (30 / 720).
 
@@ -147,7 +158,7 @@ I implemented this step in lines 205 - 233 in `processing.py` in the function `g
 
 ####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video_output.mp4)
+Here's a [link to my video result](./output_images/project_video_output.mp4)
 
 ---
 
