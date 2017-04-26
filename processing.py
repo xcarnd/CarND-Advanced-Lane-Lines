@@ -37,10 +37,10 @@ def find_lane_centers_by_sliding_window_search(image, num_window=10, debug_image
         return None, None, None
 
     # search pixels within the box with window_width wide.
-    left_min = int(left_center - window_width / 2)
-    left_max = int(left_center + window_width / 2)
-    right_min = int(right_center - window_width / 2)
-    right_max = int(right_center + window_width / 2)
+    left_min = max(int(left_center - window_width / 2), 0)
+    left_max = min(int(left_center + window_width / 2), image.shape[0])
+    right_min = max(int(right_center - window_width / 2), 0)
+    right_max = min(int(right_center + window_width / 2), image.shape[0])
     left_window = image[image.shape[0] - slice_height:image.shape[0], left_min:left_max]
     right_window = image[image.shape[0] - slice_height:image.shape[0], right_min:right_max]
 
@@ -173,10 +173,10 @@ def find_lane_center_by_prior_fit(image, left_fit_params, right_fit_params, num_
         right_center = r_a * center_y ** 2 + r_b * center_y + r_c
 
         # find pixels within the window centered at left_center/right_center, with window_width wide.
-        left_min = int(left_center - window_width / 2)
-        left_max = int(left_center + window_width / 2)
-        right_min = int(right_center - window_width / 2)
-        right_max = int(right_center + window_width / 2)
+        left_min = max(int(left_center - window_width / 2), 0)
+        left_max = min(int(left_center + window_width / 2), image.shape[0])
+        right_min = max(int(right_center - window_width / 2), 0)
+        right_max = min(int(right_center + window_width / 2), image.shape[0])
         left_window = image[slice_y_min:slice_y_max, left_min:left_max]
         right_window = image[slice_y_min:slice_y_max, right_min:right_max]
 
