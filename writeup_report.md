@@ -41,7 +41,7 @@ To do camera calibration, I am first preparing "object points", which will be th
 
 Next I used `cv2.findChessboardCorners()` function to locate the corners of the chessboard. If corners are not found (the first return value from `cv2.findChessboardCorners` is None), I simply skipped the image and continue with the next one; if corners are found, I stored the results into the array `imgp`, and also make copy of `objpoints` and appended to the array `objp` to keep the mapping amount them.
 
-After visited all the calibration images, I then used the collected `imgp` and `objp` the compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function. The camera matrix and distortion coefficient are then stored for future use.
+After visiting all the calibration images, I then used the collected `imgp` and `objp` the compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function. The camera matrix and distortion coefficient are then stored for future use.
 
 By invoking `undistort()` method in the `Camera` class (line 48 - 53 in `camera.py`), which in turns calling the `cv2.undistort()` function, I can repeatedly perform camera correction on input image. Here's an example when I applied camera correction on a test image:
 
@@ -138,7 +138,7 @@ and the unwarped masking image:
 
 I did this in lines 226 - 233 in the file `processing.py`. The main idea is converting each points in pixel to points in meter then fit again. Depending on the `src_rect` I picked for perspective transform, I set the meter in pixel in x direction to be (3.7 / (980 - 300)), meter in pixel in y direction to be (30 / 720).
 
-After fitting polynomials in meters, curvatures are calcuated using the formular:
+After fitting polynomials in meters, curvatures are calculated using the formulas denoted in course videos.
 
 Average of the curvature of the left lane and right lane is taken and used as the curvature of the road.
 
